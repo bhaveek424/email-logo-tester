@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Logo Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #4CAF50;
+            background: #f9f9f9;
+        }
+
+        .upload-area.dragover {
+            border-color: #4CAF50;
+            background: #e8f5e9;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #45a049;
+        }
+
+        .btn-danger {
+            background: #f44336;
+        }
+
+        .btn-danger:hover {
+            background: #da190b;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .previews-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .preview-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .preview-header {
+            background: #f5f5f5;
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .preview-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .preview-info {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .preview-content {
+            padding: 20px;
+        }
+
+        .email-template-preview {
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            background: #f0f0f0;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .email-template-preview iframe {
+            width: 100%;
+            border: none;
+            background: white;
+            display: block;
+        }
+
+        .preview-actions {
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .dimension-display {
+            background: #e3f2fd;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #1976d2;
+            font-weight: 500;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📧 Email Logo Tester</h1>
+        <p class="subtitle">Upload and test different logo dimensions for your email template</p>
+
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📤</div>
+                <h3>Click or drag images here to upload</h3>
+                <p style="color: #666; margin-top: 10px;">Support for JPG, PNG, SVG, GIF</p>
+                <input type="file" id="fileInput" accept="image/*" multiple>
+            </div>
+            <div class="controls">
+                <button class="btn" onclick="document.getElementById('fileInput').click()">
+                    Choose Files
+                </button>
+                <button class="btn btn-danger" onclick="clearAllLogos()">
+                    Clear All
+                </button>
+            </div>
+        </div>
+
+        <div id="previewsContainer">
+            <div class="empty-state">
+                <div class="empty-state-icon">🖼️</div>
+                <h3>No logos uploaded yet</h3>
+                <p>Upload some images to see how they look in your email template</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'email_logos';
+        
+        // Load logos from localStorage on page load
+        let logos = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderPreviews();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+
+            uploadArea.addEventListener('click', () => fileInput.click());
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                handleFiles(e.target.files);
+            });
+        }
+
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const logo = {
+                                id: Date.now() + Math.random(),
+                                name: file.name,
+                                dataUrl: e.target.result,
+                                width: img.width,
+                                height: img.height,
+                                size: file.size
+                            };
+                            logos.push(logo);
+                            saveLogos();
+                            renderPreviews();
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        function saveLogos() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(logos));
+        }
+
+        function renderPreviews() {
+            const container = document.getElementById('previewsContainer');
+            
+            if (logos.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🖼️</div>
+                        <h3>No logos uploaded yet</h3>
+                        <p>Upload some images to see how they look in your email template</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `<div class="previews-grid">${logos.map(logo => `
+                <div class="preview-card">
+                    <div class="preview-header">
+                        <div class="preview-name">${logo.name}</div>
+                        <div class="preview-info">
+                            <span class="dimension-display">${logo.width} × ${logo.height}px</span>
+                            <span style="margin-left: 10px; color: #999;">${formatFileSize(logo.size)}</span>
+                        </div>
+                    </div>
+                    <div class="preview-content">
+                        <div class="email-template-preview">
+                            <iframe id="frame-${logo.id}" style="height: 800px;"></iframe>
+                        </div>
+                    </div>
+                    <div class="preview-actions">
+                        <button class="btn btn-small" onclick="replaceLogo('${logo.id}')">
+                            Replace
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="deleteLogo('${logo.id}')">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `).join('')}</div>`;
+
+            // Inject the email template into each iframe
+            logos.forEach(logo => {
+                const iframe = document.getElementById(`frame-${logo.id}`);
+                if (iframe) {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    iframeDoc.open();
+                    iframeDoc.write(getEmailTemplate(logo.dataUrl, 'Your Company'));
+                    iframeDoc.close();
+                }
+            });
+        }
+
+        function getEmailTemplate(logoUrl, companyName) {
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eNPS Survey 2025 - Survey Announcement</title>
+</head>
+<body style="margin: 0; padding: 0; box-sizing: border-box; font-family: 'IBM Plex Sans', sans-serif; background-color: #f0f0f0; padding: 40px 20px;">
+    <div class="container" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 4px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+        <div class="header" style="text-align: center; padding: 40px 20px 20px;">
+            <!-- PeopleCues Logo - Add your logo src here -->
+            <img src="https://okr-app-store.s3.ap-south-1.amazonaws.com/review-email-templates-images/PeopleCues.png" alt="PeopleCues by xto10x" class="peoplecues-logo" style="max-width: 180px; height: auto; margin: 0 auto 30px; display: block;">
+            
+            <!-- Illustration SVG - Add your illustration SVG code here -->
+            <div class="illustration" style="width: 120px; height: 120px; margin: 0 auto 25px; display: block;"><img src="https://images-people-email.s3.ap-south-1.amazonaws.com/email-announcement-illus.png" alt="PeopleCues by xto10x" class="email-illustration" style="width: 160px; height: 150px;" /> </div>
+            
+            <!-- Company Logo - Add your logo src here -->
+            <div class="company-logo-div" style="margin-top: 50px;">
+                <img src="${logoUrl}" alt="${companyName}" class="company-logo" style="max-width: 150px; height: auto; margin: 0 auto 15px; display: block;">
+            </div>
+            <div class="subtitle" style="color: #333; font-size: 24px; margin-bottom: 5px; font-weight: 400; line-height: 32px;">eNPS Survey 2025</div>
+            <div class="announcement" style="color: #000; font-size: 26px; font-weight: 700; margin-bottom: 25px; line-height: 34px; letter-spacing: 0.042px;">Survey Announcement</div>
+        </div>
+
+        <div class="divider" style="height: 1px; background-color: #e0e0e0;"></div>
+        
+        <div class="content" style="padding: 20px 50px; line-height: 1.6; color: #333; font-size: 14px;"><p><span style="">Hi John Doe,</span></p><p><br></p><p><span style="">We are rolling out the eNPS Survey 2025 to gather your valuable feedback on culture &amp; practices . This is an opportunity to reflect and share your honest feedback to build a healthy org together. </span></p><p><br></p><p><span style="">Please note:</span></p><ul class="editor-list-ul"><li value="1" class="editor-listitem"><span style="">Provide </span><u><span>honest answers</span></u><span style=""> so that right concern areas can be understood and actioned upon.</span></li><li value="2" class="editor-listitem"><span style="">Anonymity:</span><i><em> Your individual responses will be strictly anonymous</em></i><span style="">.</span></li><li value="3" class="editor-listitem"><span style="">Only aggregate responses will be reported and accessible to the </span><b><strong>leadership</strong></b><span style="">.</span></li></ul><p><br></p><p><br></p><p><span style="">Thanks</span><br><span style="">xto10x Technologies</span></p></div>
+        
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
+            <tr>
+                <td align="center" style="
+                    padding: 25px 50px; 
+                    font-family: Arial, sans-serif;
+                    font-size: 13px;
+                ">
+                    
+                    <table border="0" cellpadding="0" cellspacing="0" style="
+                        border-collapse: collapse; 
+                        padding: 12px;
+                        background-color: #FFFAF0; 
+                        border-radius: 5px; 
+                        width: 100%;
+                        max-width: 100%;
+                    ">
+                        <tr>
+                            <td style="padding: 12px;">
+                                
+                                <table border="0" cellpadding="0" cellspacing="0" align="center" style="border-collapse: collapse;">
+                                    <tr>
+                                        
+                                        <td align="center" style="
+                                            padding-right: 8px;
+                                            line-height: 0;
+                                        ">
+                                            <img src="https://images-people-email.s3.ap-south-1.amazonaws.com/anonymous-emai-lock.png" 
+                                                 alt="Lock Icon"
+                                                 width="14" 
+                                                 height="14" 
+                                                 style="
+                                                 object-fit: contain;
+                                                    display: block; 
+                                                    width: 14px; 
+                                                    height: 14px; 
+                                                    font-size: 14px;
+                                                 " 
+                                            />
+                                        </td>
+                                        
+                                        <td align="left" style="
+                                            font-size: 14px; 
+                                            font-style: normal; 
+                                            font-weight: 400; 
+                                            line-height: 14px; 
+                                            color: #666;
+                                            vertical-align: middle;
+                                        ">
+                                            Your answers are anonymous
+                                        </td>
+                                    </tr>
+                                </table>
+                                
+                            </td>
+                        </tr>
+                    </table>
+        
+                </td>
+            </tr>
+        </table>
+        
+        <div class="cta-section" style="text-align: center; padding: 0 50px 30px;">
+            <a href="#" class="cta-button" style="display: block; background-color: #2F53D7; color: #ffffff; text-decoration: none; padding: 15px 60px; border-radius: 5px; transition: background-color 0.3s; width: 100%; font-size: 14px; font-style: normal; font-weight: 600; line-height: 20px; box-sizing: border-box; text-align: center;">Take Survey</a>
+            <div class="link-section" style="text-align: center; margin-top: 15px; font-size: 14px; color: #666;">
+                Also find the link to the survey <a class="cta-here-link" href="#" style="color: #4c6ef5; text-decoration: none;">HERE</a>
+            </div>
+        </div>
+        
+        <div class="footer" style="padding: 20px 50px 30px; font-size: 11px; color: #999; line-height: 1.6; text-align: center;">
+            Your responses and information are securely collected and kept by PeopleCues in accordance with our <a class="privacy-policy" href="javascript:void(0)" style="color: #4c6ef5; text-decoration: none;">Privacy Policy</a>. Your responses will be reported to Release Enablement based on the specific rules for this survey. If you have any additional questions, please contact us at: <a href="mailto:support@peoplecues.com" style="color: #4c6ef5; text-decoration: none;">support@peoplecues.com</a>
+        </div>
+    </div>
+</body>
+</html>`;
+        }
+
+        function replaceLogo(id) {
+            // Convert string id to number for proper comparison
+            const numericId = parseFloat(id);
+            
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const index = logos.findIndex(l => l.id === numericId);
+                            if (index !== -1) {
+                                logos[index] = {
+                                    id: numericId,
+                                    name: file.name,
+                                    dataUrl: e.target.result,
+                                    width: img.width,
+                                    height: img.height,
+                                    size: file.size
+                                };
+                                saveLogos();
+                                renderPreviews();
+                            }
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        }
+
+        function deleteLogo(id) {
+            // Convert string id to number for proper comparison
+            const numericId = parseFloat(id);
+            
+            if (confirm('Are you sure you want to delete this logo?')) {
+                logos = logos.filter(l => l.id !== numericId);
+                saveLogos();
+                renderPreviews();
+            }
+        }
+
+        function clearAllLogos() {
+            if (logos.length === 0) return;
+            
+            if (confirm('Are you sure you want to clear all logos?')) {
+                logos = [];
+                saveLogos();
+                renderPreviews();
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+    </script>
+</body>
+</html>
